@@ -1,0 +1,103 @@
+diff --git a/tools/lift/lift32.py b/tools/lift/lift32.py
+index c17fa17..801e4b4 100644
+--- a/tools/lift/lift32.py
++++ b/tools/lift/lift32.py
+@@ -1977,16 +1977,7 @@ class Lifter:
+             lines.append(f"_st[0] = cos(_st[0]); _fpu_cmp = 1; {comment}")
+ 
+         elif m == 'fsincos':
+-            lines.append(f"{{ double _a = _st[0]; _st[0] = cos(_a); fp_push(sin(_a)); }} _fpu_cmp = 1; {comment}")
+-
+-        elif m == 'fpatan':
+-            lines.append(f"{{ double _v = fp_pop(); _st[0] = atan2(_v, _st[0]); }} {comment}")
+-
+-        elif m == 'f2xm1':
+-            lines.append(f"_st[0] = pow(2.0, _st[0]) - 1.0; {comment}")
+-
+-        elif m == 'fscale':
+-            lines.append(f"_st[0] = _st[0] * pow(2.0, (int)_st[1]); {comment}")
++            lines.append(f"{{ double _a = _st[0]; _st[0] = sin(_a); fp_push(cos(_a)); }} _fpu_cmp = 1; {comment}")
+ 
+         elif m == 'frndint':
+             # Round by the control word, like fist. `(double)(int)x` always
+diff --git a/tools/lift/test_fsincos.py b/tools/lift/test_fsincos.py
+new file mode 100644
+index 0000000..8a39a1b
+--- /dev/null
++++ b/tools/lift/test_fsincos.py
+@@ -0,0 +1,75 @@
++"""Compare lifted FSINCOS with the x86 instruction on Unicorn."""
++import math
++from pathlib import Path
++import shutil
++import struct
++import subprocess
++import sys
++import unittest
++
++import capstone
++from unicorn import Uc, UC_ARCH_X86, UC_MODE_32
++from unicorn.x86_const import UC_X86_REG_EFLAGS
++
++sys.path.insert(0, str(Path(__file__).resolve().parent))
++from lift32 import Lifter
++
++ROOT = Path(__file__).resolve().parents[4]
++
++
++class FsincosTest(unittest.TestCase):
++    def test_cosine_on_top_and_sine_below(self):
++        decoder = capstone.Cs(capstone.CS_ARCH_X86, capstone.CS_MODE_32)
++        decoder.detail = True
++        original = bytes.fromhex("d9fb")
++        instruction = next(decoder.disasm(original, 0x1000))
++        lifter = Lifter()
++        lifted = "\n".join(lifter.lift_instruction(instruction))
++        self.assertIn("_st[0] = sin(_a); fp_push(cos(_a));", lifted)
++        self.assertNotIn("_st[0] = cos(_a); fp_push(sin(_a));", lifted)
++        angles = (0.0, 1e-6, -1e-6, 0.01, -0.01, math.pi / 180, -math.pi / 180,
++                  math.pi / 4, -math.pi / 4, math.pi / 2, math.pi, 2 * math.pi, 10.0, -10.0)
++        out = ROOT / "build/fsincos-test"
++        out.mkdir(parents=True, exist_ok=True)
++        source = out / "check.c"
++        executable = out / "check.exe"
++        header = (ROOT / "app/native/runtime/recomp_types.h").read_text(encoding="utf-8")
++        start = header.index("static inline void fp_push_impl(")
++        push = header[start:header.index("\n}", start) + 2]
++        source.write_text(
++            "#include <assert.h>\n#include <math.h>\n#include <stdio.h>\n#include <stdint.h>\n"
++            "int64_t g_st_i64[8];\n" + push + "\n#define fp_push(v) fp_push_impl(_st,&_fp_top,(v))\n"
++            "int main(void){double angles[]={" + ",".join(repr(a) for a in angles) + "};\n"
++            "for(unsigned i=0;i<sizeof angles/sizeof *angles;++i){"
++            "double _st[8]={angles[i],9.125};int _fp_top=1;int _fpu_cmp=0;\n" + lifted +
++            "\nassert(_fp_top==2 && _st[2]==9.125);printf(\"%.17g %.17g\\n\",_st[0],_st[1]);}\n"
++            "return 0;}\n", encoding="utf-8")
++        zig = shutil.which("zig")
++        self.assertIsNotNone(zig, "zig cc is required to execute the generated C")
++        for command in ([zig, "cc", "-std=c11", "-O2", str(source), "-o", str(executable)], [str(executable)]):
++            result = subprocess.run(command, capture_output=True, text=True)
++            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
++        actual = [tuple(map(float, line.split())) for line in result.stdout.splitlines()]
++        self.assertEqual(len(actual), len(angles))
++        for angle, pair in zip(angles, actual):
++            uc = Uc(UC_ARCH_X86, UC_MODE_32)
++            uc.mem_map(0x10000, 4096)
++            code = bytes.fromhex("dbe3dd05") + struct.pack("<I", 0x10308)
++            code += bytes.fromhex("dd05") + struct.pack("<I", 0x10300) + original
++            for address in (0x10400, 0x10408, 0x10410):
++                code += bytes.fromhex("dd1d") + struct.pack("<I", address)
++            uc.mem_write(0x10000, code)
++            uc.mem_write(0x10300, struct.pack("<dd", angle, 9.125))
++            uc.reg_write(UC_X86_REG_EFLAGS, 0x202)
++            uc.emu_start(0x10000, 0x10000 + len(code), count=20)
++            cosine, sine, sentinel = struct.unpack("<ddd", uc.mem_read(0x10400, 24))
++            self.assertEqual(sentinel, 9.125)
++            self.assertEqual(uc.reg_read(UC_X86_REG_EFLAGS), 0x202)
++            self.assertAlmostEqual(cosine, math.cos(angle), places=12)
++            self.assertAlmostEqual(sine, math.sin(angle), places=12)
++            self.assertAlmostEqual(pair[0], cosine, places=12, msg=f"cosine ST(0), angle {angle}")
++            self.assertAlmostEqual(pair[1], sine, places=12, msg=f"sine ST(1), angle {angle}")
++
++
++if __name__ == "__main__":
++    unittest.main()

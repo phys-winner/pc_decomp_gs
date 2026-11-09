@@ -1,0 +1,54 @@
+{
+  "backend": {
+    "provenance": "Project-local lifter and host adaptations from the existing homm5 and The Void ports",
+    "imported_from_revision": "5a66b6548e4435c7f27c811adbf6b00db16632d9",
+    "project_license": "GPL-3.0-or-later",
+    "files": [
+      "tools/lift_game.py"
+    ],
+    "external_checkout_required": false
+  },
+  "pcrecomp": {
+    "url": "https://github.com/sp00nznet/pcrecomp.git",
+    "revision": "904ac3129d0c9d05efbeec19a1dce6abbe7f5d26",
+    "directory": "reference/pcrecomp",
+    "license": "MIT",
+    "patch": "patches/pcrecomp/port-fixes.patch"
+  },
+  "mojoshader": {
+    "url": "https://github.com/icculus/mojoshader.git",
+    "revision": "cf2661bcb55d9a8732e86f79922592d7efdf5383",
+    "directory": "reference/mojoshader",
+    "license": "Zlib",
+    "local_changes": "Legacy shader and effect adaptations retained from the local port snapshot",
+    "patch": "patches/mojoshader/port-fixes.patch"
+  },
+  "dlmalloc": {
+    "version": "2.8.6",
+    "directory": "reference/dlmalloc",
+    "license": "MIT-0",
+    "sha256": "be7be56b40b4b31417e74e77687f9b96127ea6cae534cf236aee40a4c739508d",
+    "url": "https://gee.cs.oswego.edu/pub/misc/malloc.c",
+    "file": "reference/dlmalloc/malloc.c"
+  },
+  "directx_headers": {
+    "directory": "reference/dxvk/include/native/directx",
+    "license": "LGPL-2.1-or-later; individual source notices apply",
+    "usage": "Optional Windows effect-oracle development tool only; no DXVK binary is shipped",
+    "url": "https://github.com/Joshua-Ashton/mingw-directx-headers.git",
+    "revision": "9df86f2341616ef1888ae59919feaa6d4fad693d"
+  },
+  "launcher": {
+    "directory": "../launcher",
+    "source": "External shared launcher, same lookup as sibling homm5/ut3 ports; no public Git URL",
+    "files": 30,
+    "snapshot_sha256": "a1a153cdec5125ab4b8d5ad6e8eb990b1d86d512a17d3bc323b9d4b7149ff9e0",
+    "hash_format": "Reference subset: android/src/port/launcher/*.java, tools/launcher.py, tools/icons.py, native/vulkan_probe.c; sorted POSIX paths relative to launcher root + NUL + raw file bytes",
+    "environment": "PORT_LAUNCHER",
+    "search_order": [
+      "PORT_LAUNCHER",
+      "android/launcher",
+      "../launcher"
+    ]
+  }
+}

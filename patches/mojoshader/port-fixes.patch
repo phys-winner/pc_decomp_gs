@@ -1,0 +1,262 @@
+diff --git a/mojoshader.c b/mojoshader.c
+index 486d7e0..0f3d76f 100644
+--- a/mojoshader.c
++++ b/mojoshader.c
+@@ -5,6 +5,7 @@
+  * Please see the file LICENSE.txt in the source's root directory.
+  *
+  *  This file written by Ryan C. Gordon.
++ *  Altered locally for Heroes V: Shader Model 1.x texture inputs and samplers.
+  */
+ 
+ // !!! FIXME: this file really needs to be split up.
+@@ -595,19 +596,17 @@ static int adjust_swizzle(const Context *ctx, const RegisterType regtype,
+     MOJOSHADER_usage usage = MOJOSHADER_USAGE_UNKNOWN;
+     int index = 0;
+ 
+-    // Shader Model 1 didn't have to predeclare attribute variables, so
+-    //  reglist_find won't be able to look them up at this point, but
+-    //  their usages don't change.
+-    if (!shader_version_atleast(ctx, 2, 0))
+-        shader_model_1_input_usage(regnum, &usage, &index);
+-    else
++    // SM1 can include DCLs with an input layout different from its legacy
++    // defaults. Prefer that declaration: treating H5's v3 TEXCOORD as the
++    // default NORMAL applies the normal's BGRA swizzle to the UV instead.
++    const RegisterList *reg = reglist_find(&ctx->attributes, regtype, regnum);
++    if (reg != NULL)
+     {
+-        const RegisterList *reg = reglist_find(&ctx->attributes, regtype, regnum);
+-        if (reg == NULL)
+-            return swizzle;
+         usage = reg->usage;
+         index = reg->index;
+-    } // else
++    } // if
++    else if (!shader_version_atleast(ctx, 2, 0))
++        shader_model_1_input_usage(regnum, &usage, &index);
+ 
+     if (usage == MOJOSHADER_USAGE_UNKNOWN)
+         return swizzle;
+@@ -1366,6 +1365,15 @@ static void state_TEXCRD(Context *ctx)
+ {
+     if (shader_version_atleast(ctx, 2, 0))
+         fail(ctx, "TEXCRD in Shader Model >= 2.0");  // apparently removed.
++    else if (shader_version_atleast(ctx, 1, 4))
++    {
++        if (ctx->dest_arg.regtype != REG_TYPE_TEMP)
++            fail(ctx, "TEXCRD destination must be a temp register");
++        if (ctx->source_args[0].regtype != REG_TYPE_TEXTURE)
++            fail(ctx, "TEXCRD source must be a texture register");
++    } // else if
++    else if (ctx->dest_arg.regtype != REG_TYPE_TEXTURE)
++        fail(ctx, "TEXCOORD destination must be a texture register");
+ } // state_TEXCRD
+ 
+ static void state_FRC(Context *ctx)
+@@ -1974,7 +1982,13 @@ static void state_TEXLD(Context *ctx)
+ 
+     else if (shader_version_atleast(ctx, 1, 4))
+     {
+-        // !!! FIXME: checks for ps_1_4 version here...
++        const SourceArgInfo *src = &ctx->source_args[0];
++        if (ctx->dest_arg.regtype != REG_TYPE_TEMP)
++            fail(ctx, "TEXLD destination must be a temp register");
++        if ((src->regtype != REG_TYPE_TEXTURE) && (src->regtype != REG_TYPE_TEMP))
++            fail(ctx, "TEXLD source must be a texture or temp register");
++        // ps_1_4 samples the texture stage given by rD, not by tS/rS.
++        add_sampler(ctx, ctx->dest_arg.regnum, TEXTURE_TYPE_2D, 0);
+     } // else if
+ 
+     else
+@@ -3611,6 +3625,12 @@ static void process_definitions(Context *ctx)
+                     break;
+ 
+                 case REG_TYPE_ADDRESS:
++                    if (shader_is_pixel(ctx) && !shader_version_atleast(ctx, 2, 0))
++                        add_attribute_register(ctx, regtype, regnum,
++                                               MOJOSHADER_USAGE_TEXCOORD, regnum,
++                                               0xF, 0);
++                    ctx->profile->global_emitter(ctx, regtype, regnum);
++                    break;
+                 case REG_TYPE_PREDICATE:
+                 case REG_TYPE_TEMP:
+                 case REG_TYPE_LOOP:
+diff --git a/profiles/mojoshader_profile_glsl.c b/profiles/mojoshader_profile_glsl.c
+index 319e3cb..007a61a 100644
+--- a/profiles/mojoshader_profile_glsl.c
++++ b/profiles/mojoshader_profile_glsl.c
+@@ -5,6 +5,7 @@
+  * Please see the file LICENSE.txt in the source's root directory.
+  *
+  *  This file written by Ryan C. Gordon.
++ *  Altered locally for Heroes V: Shader Model 1.x texture GLSL translation.
+  */
+ 
+ #define __MOJOSHADER_INTERNAL__ 1
+@@ -698,12 +699,15 @@ void emit_GLSL_global(Context *ctx, RegisterType regtype, int regnum)
+ #else
+                     const int skipGLTexCoord = (regnum >= 4);
+ #endif
++                    output_line(ctx, "vec4 %s;", varname);
++                    push_output(ctx, &ctx->mainline_intro);
++                    ctx->indent++;
+                     if (skipGLTexCoord)
+-                        output_line(ctx, "vec4 %s = io_%i_%i;",
++                        output_line(ctx, "%s = io_%i_%i;",
+                                     varname, MOJOSHADER_USAGE_TEXCOORD, regnum);
+                     else
+-                        output_line(ctx, "vec4 %s = gl_TexCoord[%d];",
+-                                    varname, regnum);
++                        output_line(ctx, "%s = gl_TexCoord[%d];", varname, regnum);
++                    pop_output(ctx);
+                 } // if
+             } // else if
+             break;
+@@ -884,6 +888,7 @@ void emit_GLSL_attribute(Context *ctx, RegisterType regtype, int regnum,
+     // !!! FIXME: this function doesn't deal with write masks at all yet!
+     const char *qualifier_in;
+     const char *qualifier_out;
++    const int scalar = isscalar(ctx, ctx->shader_type, regtype, regnum);
+     const char *usage_str = NULL;
+     const char *arrayleft = "";
+     const char *arrayright = "";
+@@ -1060,7 +1065,10 @@ void emit_GLSL_attribute(Context *ctx, RegisterType regtype, int regnum,
+                 else
+ #endif
+                 output_line(ctx, "varying vec4 io_%i_%i;", usage, index);
+-                output_line(ctx, "#define %s io_%i_%i", var, usage, index);
++                // Keep the vec4 interstage slot, but scalar D3D outputs
++                // (notably legacy oFog) write only its first component.
++                output_line(ctx, "#define %s io_%i_%i%s", var, usage, index,
++                            scalar ? ".x" : "");
+             } // if
+             else
+             {
+@@ -1199,6 +1207,24 @@ void emit_GLSL_attribute(Context *ctx, RegisterType regtype, int regnum,
+             fail(ctx, "unknown pixel shader attribute register");
+         } // else
+ 
++        // Before ps_1_4 the t# register is writable storage initialized from
++        // this input, not an alias for an immutable fragment varying.
++        if ((regtype == REG_TYPE_TEXTURE) &&
++            (usage == MOJOSHADER_USAGE_TEXCOORD) &&
++            !shader_version_atleast(ctx, 1, 4))
++        {
++            push_output(ctx, &ctx->globals);
++#if SUPPORT_PROFILE_GLSLES
++            if (support_glsles(ctx))
++                output_line(ctx, "%s highp vec4 io_%i_%i;", qualifier_in, usage, index);
++            else
++#endif
++            if (index >= 4)
++                output_line(ctx, "varying vec4 io_%i_%i;", usage, index);
++            pop_output(ctx);
++            return;
++        } // if
++
+         push_output(ctx, &ctx->globals);
+         // no mapping to built-in var? Just make it a regular global, pray.
+         if (usage_str == NULL)
+@@ -1801,7 +1827,67 @@ void emit_GLSL_DEFI(Context *ctx)
+     pop_output(ctx);
+ } // emit_GLSL_DEFI
+ 
+-EMIT_GLSL_OPCODE_UNIMPLEMENTED_FUNC(TEXCRD)
++// SM 1.4 exposes a three-component selector (.xyz or .xyw), plus an
++// optional projective divide. General ALU source modifiers do not apply.
++static void make_GLSL_ps14_texcoord(Context *ctx, const int dims,
++                                   char *buf, const size_t buflen)
++{
++    const SourceArgInfo *src = &ctx->source_args[0];
++    char var[64]; get_GLSL_srcarg_varname(ctx, 0, var, sizeof (var));
++    if ((src->swizzle_x != 0) || (src->swizzle_y != 1) ||
++        ((src->swizzle_z != 2) && (src->swizzle_z != 3)))
++    {
++        fail(ctx, "ps_1_4 texture selector must be .xyz or .xyw");
++        *buf = '\0';
++        return;
++    } // if
++
++    if (src->src_mod == SRCMOD_NONE)
++        make_GLSL_srcarg_string(ctx, 0, (1 << dims) - 1, buf, buflen);
++    else if ((dims == 2) &&
++             (((src->src_mod == SRCMOD_DW) && (src->regtype == REG_TYPE_TEXTURE) && (src->swizzle_z == 3)) ||
++              ((src->src_mod == SRCMOD_DZ) && (src->regtype == REG_TYPE_TEMP) && (src->swizzle_z == 2))))
++        snprintf(buf, buflen, "(%s.xy / %s.%c)", var, var,
++                 (src->src_mod == SRCMOD_DW) ? 'w' : 'z');
++    else
++    {
++        fail(ctx, "invalid ps_1_4 texture projection or source modifier");
++        *buf = '\0';
++    } // else
++} // make_GLSL_ps14_texcoord
++
++void emit_GLSL_TEXCRD(Context *ctx)
++{
++    char code[256];
++    if (!shader_version_atleast(ctx, 1, 4))
++    {
++        char input[64];
++        const int regnum = ctx->dest_arg.regnum;
++#if SUPPORT_PROFILE_GLSLES
++        const int skipGLTexCoord = support_glsles(ctx) || (regnum >= 4);
++#else
++        const int skipGLTexCoord = (regnum >= 4);
++#endif
++        if (skipGLTexCoord)
++            snprintf(input, sizeof (input), "io_%i_%i", MOJOSHADER_USAGE_TEXCOORD, regnum);
++        else
++            snprintf(input, sizeof (input), "gl_TexCoord[%d]", regnum);
++        make_GLSL_destarg_assign(ctx, code, sizeof (code),
++            "vec4(clamp(%s.xyz, vec3(0.0), vec3(1.0)), 1.0)", input);
++    } // if
++    else
++    {
++        // The undefined components are set to zero. Unlike texcoord, texcrd
++        // preserves signed coordinates and does not saturate to [0, 1].
++        const int projected = ctx->source_args[0].src_mod == SRCMOD_DW;
++        char src[128], mask[6];
++        make_GLSL_ps14_texcoord(ctx, projected ? 2 : 3, src, sizeof (src));
++        make_GLSL_swizzle_string(mask, sizeof (mask), 0xE4, ctx->dest_arg.writemask);
++        make_GLSL_destarg_assign(ctx, code, sizeof (code),
++            projected ? "vec4(%s, 0.0, 0.0)%s" : "vec4(%s, 0.0)%s", src, mask);
++    } // else
++    output_line(ctx, "%s", code);
++} // emit_GLSL_TEXCRD
+ 
+ void emit_GLSL_TEXKILL(Context *ctx)
+ {
+@@ -1854,9 +1940,29 @@ void emit_GLSL_TEXLD(Context *ctx)
+ 
+     else if (!shader_version_atleast(ctx, 2, 0))
+     {
+-        // ps_1_4 is different, too!
+-        fail(ctx, "TEXLD == Shader Model 1.4 unimplemented.");  // !!! FIXME
+-        return;
++        const int stage = ctx->dest_arg.regnum;
++        RegisterList *sreg = reglist_find(&ctx->samplers, REG_TYPE_SAMPLER, stage);
++        const char *funcname;
++        int dims;
++        if (sreg == NULL)
++        {
++            fail(ctx, "TEXLD using undeclared sampler");
++            return;
++        } // if
++        switch ((TextureType) sreg->index)
++        {
++            case TEXTURE_TYPE_2D: funcname = "texture2D"; dims = 2; break;
++            case TEXTURE_TYPE_CUBE: funcname = "textureCube"; dims = 3; break;
++            case TEXTURE_TYPE_VOLUME: funcname = "texture3D"; dims = 3; break;
++            default: fail(ctx, "unknown texture type"); return;
++        } // switch
++        char sampler[64], src[128], mask[6], code[256];
++        get_GLSL_varname_in_buf(ctx, REG_TYPE_SAMPLER, stage, sampler, sizeof (sampler));
++        make_GLSL_ps14_texcoord(ctx, dims, src, sizeof (src));
++        make_GLSL_swizzle_string(mask, sizeof (mask), 0xE4, ctx->dest_arg.writemask);
++        make_GLSL_destarg_assign(ctx, code, sizeof (code),
++                                 "%s(%s, %s)%s", funcname, sampler, src, mask);
++        output_line(ctx, "%s", code);
+     } // else if
+ 
+     else

@@ -1,0 +1,21 @@
+{
+  "schema_version": 2,
+  "executable": "decoded_original/griefsyndrome-jp.exe",
+  "executable_sha256": "ef087f503cf9483bc4757b68724007a657992dd7c8a0a416d8c84c1960133124",
+  "editions": {
+    "jp": {
+      "containers": {
+        "gs00.dat": "60feca01c0466b6e3f65a6d100cd8b0911e72621738d33658a005187d6d63f65",
+        "gs01.dat": "3f84e6a3d9728f4085cb651efaaf6381f44052923e586dec423f0c113d4aab8b"
+      }
+    },
+    "ru": {
+      "containers": {
+        "gs00.dat": "60feca01c0466b6e3f65a6d100cd8b0911e72621738d33658a005187d6d63f65",
+        "gs01.dat": "3f84e6a3d9728f4085cb651efaaf6381f44052923e586dec423f0c113d4aab8b",
+        "gs02.dat": "fae3b559676a2959fad9531937819b1de689da33bb138282a601f4ebcc35d7a3",
+        "gs03.dat": "77e1670ccbe8fba32aad275a552cc04d964dffbf26ddef329ba3e6ef58a5072c"
+      }
+    }
+  }
+}

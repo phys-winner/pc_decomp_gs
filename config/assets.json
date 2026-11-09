@@ -1,0 +1,37 @@
+{
+  "layout": "external-game-data",
+  "files": [
+    {
+      "name": "griefsyndrome.exe",
+      "bytes": 2924032,
+      "sha256": "ef087f503cf9483bc4757b68724007a657992dd7c8a0a416d8c84c1960133124"
+    },
+    {
+      "name": "gs00.dat",
+      "bytes": 637050631,
+      "sha256": "60feca01c0466b6e3f65a6d100cd8b0911e72621738d33658a005187d6d63f65"
+    },
+    {
+      "name": "gs01.dat",
+      "bytes": 30139900,
+      "sha256": "3f84e6a3d9728f4085cb651efaaf6381f44052923e586dec423f0c113d4aab8b"
+    },
+    {
+      "name": "gs02.dat",
+      "bytes": 5322557,
+      "sha256": "fae3b559676a2959fad9531937819b1de689da33bb138282a601f4ebcc35d7a3"
+    },
+    {
+      "name": "gs03.dat",
+      "bytes": 11616041,
+      "sha256": "77e1670ccbe8fba32aad275a552cc04d964dffbf26ddef329ba3e6ef58a5072c"
+    },
+    {
+      "name": "gs_widescreen.dat",
+      "bytes": 46624542,
+      "sha256": "1e184fd0e09dcecd44330497772dabcdd3644325dc0afb0a46607c5115571499"
+    }
+  ],
+  "archive": "grief-syndrome-game-data.zip",
+  "archive_sha256": "c3a489fd9cfa4a6fbc8245618513b68d4d3fcb58ad377bd7e5c183f9b2982247"
+}

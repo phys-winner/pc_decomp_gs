@@ -1,0 +1,80 @@
+{
+  "schema": 1,
+  "app": {
+    "label": "Grief Syndrome",
+    "title": "Grief Syndrome",
+    "subtitle": {"ru": "Статическая рекомпиляция для Android", "en": "Static recompilation for Android"},
+    "logTag": "GriefSyndrome",
+    "storage": "GriefSyndrome",
+    "github": "phys-winner/pc_decomp_gs",
+    "updates": false,
+    "languages": ["ru", "en"],
+    "allFilesAccess": true,
+    "localNetwork": true,
+    "autoLaunch": false,
+    "hooks": "org.griefsyndrome.port.LauncherHooks",
+    "processes": {"launcher": ":launcher"},
+    "licenses": ["LICENSE", "THIRD_PARTY_NOTICES.md"]
+  },
+  "theme": {
+    "background": ["#100D18", "#211629"],
+    "card": "#28202F",
+    "cardStroke": "#5C4568",
+    "cell": "#33283D",
+    "accent": "#E0A9D4",
+    "accentDark": "#8C5B88",
+    "primaryFill": "#825578",
+    "text": "#F4EAF4",
+    "muted": "#B9A9BD",
+    "error": "#FF9A9A",
+    "good": "#A9D9B5",
+    "titleFont": "serif-bold"
+  },
+  "renderers": {
+    "default": "gles",
+    "modes": [
+      {"id": "gles", "kind": "gles", "title": "OpenGL ES 3.0+", "needsBC": false}
+    ]
+  },
+  "options": [
+    {
+      "key": "large_address_aware",
+      "type": "bool",
+      "default": "0",
+      "defaultMinRamGiB": 5,
+      "arm64Only": true,
+      "title": {
+        "ru": "Лимит памяти игры до 4 ГБ",
+        "en": "Game memory limit up to 4 GB"
+      },
+      "hint": {
+        "ru": "Включено по умолчанию при наличии минимум 5 ГиБ ОЗУ. Применяется при новом запуске игры.",
+        "en": "Enabled by default with at least 5 GiB RAM. Applies when the game starts again."
+      }
+    }
+  ],
+  "distributions": [
+    {
+      "id": "grief",
+      "title": "Grief Syndrome",
+      "version": "1.00",
+      "activity": "org.griefsyndrome.port.GameActivity",
+      "renderers": ["gles"],
+      "intro": {"default": false},
+      "parts": [
+        {
+          "id": "game",
+          "title": {"ru": "Файлы игры", "en": "Game files"},
+          "folder": "{storage}/game",
+          "marker": "gs00.dat",
+          "required": ["griefsyndrome.exe", "gs00.dat", "gs01.dat"],
+          "needed": ["griefsyndrome.exe", "gs00.dat", "gs01.dat", "gs02.dat", "gs03.dat", "gs_widescreen.dat"]
+        }
+      ]
+    }
+  ],
+  "hints": {
+    "gameFiles": {"ru": "Укажите папку игры или установите grief-syndrome-game-data.zip. Нужны оригинальный японский EXE версии 1.00 и gs00.dat/gs01.dat. gs02.dat/gs03.dat добавляют русский язык. Сохранения хранятся отдельно.", "en": "Choose the game folder or install grief-syndrome-game-data.zip. Requires the original Japanese v1.00 EXE and gs00.dat/gs01.dat. Optional gs02.dat/gs03.dat add Russian. Saves are kept separately."},
+    "options": {"ru": "Полноэкранный режим всегда включён. Сглаживание и FPS limit настраиваются в игре.", "en": "Fullscreen is always on. Anti-aliasing and FPS limit are configured in the game."}
+  }
+}

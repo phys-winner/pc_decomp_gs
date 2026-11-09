@@ -1,0 +1,34 @@
+original/
+decoded_original/
+generated/
+build/
+work/
+pub/
+STATE.md
+PORT_FEATURES.md
+/port.json
+/reference/
+/android/launcher/
+*.apk
+*.apks
+*.obb
+*.keystore
+__pycache__/
+*.pyc
+
+# Original game inputs and generated translations stay local.
+app/assets/*
+!app/assets/.keep
+app/artwork/widescreen/*.original.act
+
+# Credentials and machine-specific files.
+.env
+.env.*
+*.pk8
+*.pem
+*.jks
+local.properties
+.idea/
+.vscode/
+*.log
+*.tmp

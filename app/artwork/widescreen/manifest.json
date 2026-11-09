@@ -1,0 +1,66 @@
+[
+  {
+    "file": "clear1.png",
+    "size": [
+      2172,
+      724
+    ],
+    "sha256": "19c7c468d66cdf7fa82c0020dbc075d55205b5c3589ce3106e2c5a35b60e46ac"
+  },
+  {
+    "file": "clear2.png",
+    "size": [
+      2172,
+      724
+    ],
+    "sha256": "9e255c93263308bc5825e949eb0209c336d70f616f2171b178af75c906531812"
+  },
+  {
+    "file": "clear3.png",
+    "size": [
+      2243,
+      701
+    ],
+    "sha256": "afb6694f144e34d9ad39cdd39991d91045a6b66bf1415b7ca160b9b3588c093d"
+  },
+  {
+    "file": "clear4.png",
+    "size": [
+      2216,
+      709
+    ],
+    "sha256": "40963a3ba741f237f2b3476232669918cbba08e1f09d0ee9f85b37007482fcd6"
+  },
+  {
+    "file": "clear5.png",
+    "size": [
+      2216,
+      709
+    ],
+    "sha256": "ad1bb3e9418fa182ca4700e05e51925345cbfa2eb9d7959d5872b2bf4202d7d5"
+  },
+  {
+    "file": "stage_select.png",
+    "size": [
+      2216,
+      709
+    ],
+    "sha256": "b682dbb1991e90efc3a97bfa2c44bb112a6121dfcc70be6bca395423e1eeb7bc"
+  },
+  {
+    "file": "title.png",
+    "size": [
+      2216,
+      709
+    ],
+    "sha256": "760ab10f9fc7950d0e85b683126081c6361088f3421e4e9b9b49de0a6dcf6fa1"
+  },
+  {
+    "file": "TitleBG.original.act",
+    "bytes": 5534,
+    "sha256": "d79a2b7bdb28ab248b5cfdbdd81d08cd1cbebc2ae433491e4e7c42fe582bb6d4",
+    "source_archive": "original/japanese/gs00.dat",
+    "source_entry": "data/system/Title/TitleBG.act",
+    "purpose": "Immutable metadata input; bank copy changes only layer 2 subtractive alpha at byte 1208 from 0.05 to 0."
+  }
+]

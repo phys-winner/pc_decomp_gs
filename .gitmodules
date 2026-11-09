@@ -1,0 +1,11 @@
+[submodule "reference/pcrecomp"]
+	path = reference/pcrecomp
+	url = https://github.com/sp00nznet/pcrecomp.git
+	ignore = dirty
+[submodule "reference/mojoshader"]
+	path = reference/mojoshader
+	url = https://github.com/icculus/mojoshader.git
+	ignore = dirty
+[submodule "reference/dxvk/include/native/directx"]
+	path = reference/dxvk/include/native/directx
+	url = https://github.com/Joshua-Ashton/mingw-directx-headers.git
